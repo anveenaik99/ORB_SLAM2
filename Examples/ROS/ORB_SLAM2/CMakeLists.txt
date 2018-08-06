@@ -67,7 +67,9 @@ src/ros_mono.cc
 target_link_libraries(Mono
 ${LIBS}
 )
-
+rosbuild_add_executable(offboard src/offb_node.cpp)
+target_link_libraries(offboard ${catkin_LIBRARIES}
+)
 rosbuild_add_executable(Mono_mod
 src/ros_mono_mod.cc
 )
