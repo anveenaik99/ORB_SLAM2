@@ -55,6 +55,8 @@ ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/g2o/lib/libg2o.so
 ${PROJECT_SOURCE_DIR}/../../../lib/libORB_SLAM2.so
+${PROJECT_SOURCE_DIR}/../../../lib/libORB_SLAM2.so
+-lboost_system
 )
 
 # Node for monocular camera
@@ -66,6 +68,13 @@ target_link_libraries(Mono
 ${LIBS}
 )
 
+rosbuild_add_executable(Mono_mod
+src/ros_mono_mod.cc
+)
+
+target_link_libraries(Mono_mod
+${LIBS}
+)
 # Node for monocular camera (Augmented Reality Demo)
 rosbuild_add_executable(MonoAR
 src/AR/ros_mono_ar.cc
@@ -86,6 +95,14 @@ target_link_libraries(Stereo
 ${LIBS}
 )
 
+# Node for stereo camera with ros
+rosbuild_add_executable(Stereo_mod
+src/ros_stereo_mod.cc
+)
+
+target_link_libraries(Stereo_mod
+${LIBS}
+)
 # Node for RGB-D camera
 rosbuild_add_executable(RGBD
 src/ros_rgbd.cc
