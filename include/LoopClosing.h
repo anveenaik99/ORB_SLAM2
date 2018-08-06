@@ -23,6 +23,7 @@
 
 #include "KeyFrame.h"
 #include "LocalMapping.h"
+#include <unistd.h>
 #include "Map.h"
 #include "ORBVocabulary.h"
 #include "Tracking.h"
