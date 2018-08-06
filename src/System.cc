@@ -97,9 +97,9 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //Initialize the Viewer thread and launch
     if(bUseViewer)
     {
-        mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile);
-        mptViewer = new thread(&Viewer::Run, mpViewer);
-        mpTracker->SetViewer(mpViewer);
+        //mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile);
+        //mptViewer = new thread(&Viewer::Run, mpViewer);
+        //mpTracker->SetViewer(mpViewer);
     }
 
     //Set pointers between threads
