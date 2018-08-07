@@ -64,7 +64,7 @@ int main(int argc, char **argv)
         cerr << endl << "Usage: rosrun ORB_SLAM2 Stereo path_to_vocabulary path_to_settings do_rectify" << endl;
         ros::shutdown();
         return 1;
-    }    
+    }
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
@@ -75,7 +75,7 @@ int main(int argc, char **argv)
 	ss >> boolalpha >> igb.do_rectify;
 
     if(igb.do_rectify)
-    {      
+    {
         // Load settings related to stereo calibration
         cv::FileStorage fsSettings(argv[2], cv::FileStorage::READ);
         if(!fsSettings.isOpened())
@@ -175,6 +175,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         pos = mpSLAM->TrackStereo(cv_ptrLeft->image,cv_ptrRight->image,cv_ptrLeft->header.stamp.toSec());
     }
 
+	cout<<pos<<endl;
     if (pos.empty())
         return;
 
@@ -182,15 +183,17 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     static cv::Mat pose_prev = cv::Mat::eye(4,4, CV_32F);
     static cv::Mat world_lh = cv::Mat::eye(4,4, CV_32F);
     // matrix to flip signs of sinus in rotation matrix, not sure why we need to do that
-    static const cv::Mat flipSign = (cv::Mat_<float>(4,4) <<   1,-1,-1, 1,
-                                                               -1, 1,-1, 1,
-                                                               -1,-1, 1, 1,
-                                                                1, 1, 1, 1);
+    // static const cv::Mat flipSign = (cv::Mat_<float>(4,4) <<   1,-1,-1, 1,
+    //                                                            -1, 1,-1, 1,
+    //                                                            -1,-1, 1, 1,
+    //                                                             1, 1, 1, 1);
 
     //prev_pose * T = pose
-    cv::Mat translation =  (pos * pose_prev.inv()).mul(flipSign);
-    world_lh = world_lh * translation;
-    pose_prev = pos.clone();
+    // cv::Mat translation =  (pos * pose_prev.inv()).mul(flipSign);
+	//cv::Mat translation =  (pos).mul(flipSign);
+    // world_lh = world_lh * translation;
+    world_lh = pos;
+    // pose_prev = pos.clone();
 
 
     /* transform into global right handed coordinate system, publish in ROS*/
@@ -200,7 +203,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
 
     tf::Vector3 cameraTranslation_rh( world_lh.at<float>(0,3),world_lh.at<float>(1,3), - world_lh.at<float>(2,3) );
 
-    //rotate 270deg about x and 270deg about x to get ENU: x forward, y left, z up
+    //rotate 270deg about x and 270deg about z to get ENU: x forward, y left, z up
     const tf::Matrix3x3 rotation270degXZ(   0, 1, 0,
                                             0, 0, 1,
                                             1, 0, 0);
@@ -214,7 +217,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     //publish odometry
     nav_msgs::Odometry odom;
     odom.header.stamp = current_time;
-    odom.header.frame_id = "odom";
+    odom.header.frame_id = "camera_link";
 
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0);
 
@@ -233,5 +236,3 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     //publish the message
     odom_p.publish(odom);
 }
-
-
