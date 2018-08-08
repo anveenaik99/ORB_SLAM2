@@ -23,7 +23,7 @@
 #include<algorithm>
 #include<fstream>
 #include<chrono>
-
+#include<geometry_msgs/PoseStamped.h>
 #include<ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <message_filters/subscriber.h>
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&igb,_1,_2));
-    igb.odom_p = nh.advertise<nav_msgs::Odometry>("odom", 50);
+    igb.odom_p = nh.advertise<geometry_msgs::PoseStamped>("mavros/vision_pose", 50);
 
     ros::spin();
 
@@ -215,23 +215,24 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_link", "camera_pose"));
 
     //publish odometry
-    nav_msgs::Odometry odom;
+    //nav_msgs::Odometry odom;
+    geometry_msgs::PoseStamped odom;
     odom.header.stamp = current_time;
     odom.header.frame_id = "camera_link";
 
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0);
 
     //set the position
-    odom.pose.pose.position.x = globalTranslation_rh[0] ;
-    odom.pose.pose.position.y = globalTranslation_rh[1] ;
-    odom.pose.pose.position.z = globalTranslation_rh[2];
-    odom.pose.pose.orientation = odom_quat;
+    odom.pose.position.x = globalTranslation_rh[0] ;
+    odom.pose.position.y = globalTranslation_rh[1] ;
+    odom.pose.position.z = globalTranslation_rh[2];
+    odom.pose.orientation = odom_quat;
 
     //set the velocity
-    odom.child_frame_id = "base_link";
-    odom.twist.twist.linear.x = 0;
-    odom.twist.twist.linear.y = 0;
-    odom.twist.twist.angular.z = 0;
+    // odom.child_frame_id = "base_link";
+    // odom.twist.twist.linear.x = 0;
+    // odom.twist.twist.linear.y = 0;
+    // odom.twist.twist.angular.z = 0;
 
     //publish the message
     odom_p.publish(odom);

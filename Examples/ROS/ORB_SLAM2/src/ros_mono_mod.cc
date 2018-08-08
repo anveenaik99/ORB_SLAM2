@@ -119,7 +119,7 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
                                                                -1, 1,-1, 1,
                                                                -1,-1, 1, 1,
                                                                 1, 1, 1, 1);
-
+	cout<<pose<<endl;
     //prev_pose * T = pose
     cv::Mat translation =  (pose * pose_prev.inv()).mul(flipSign);
     world_lh = world_lh * translation;
