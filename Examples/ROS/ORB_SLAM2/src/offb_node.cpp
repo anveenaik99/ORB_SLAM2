@@ -23,7 +23,7 @@ void feedbackfn(const nav_msgs::Odometry::ConstPtr& odom_data)
     // MAVpose= *odom_data;
     pose.pose.position.x = odom_data->pose.pose.position.x;
     pose.pose.position.y = odom_data->pose.pose.position.y;
-    pose.pose.position.z = inp_z;
+    pose.pose.position.z = odom_data->pose.pose.position.z;
 }
 
 void lost_track(const std_msgs::Empty::ConstPtr& lTrack){
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 	}	
     ros::init(argc, argv, "offb_node");
     ros::NodeHandle nh;
-    ros::Subscriber imu_yaw = nh.subscribe("/odom", 10, feedbackfn);	
+    ros::Subscriber imu_yaw = nh.subscribe("mavros/local_position/odom", 10, feedbackfn);	
     // ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>
     //         ("mavros/state", 10, state_cb);
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
 
         local_pos_pub.publish(pose);
 	++i;
-	if(i<=100)
+	if(i<=200)
 	{
         ros::spinOnce();
         
