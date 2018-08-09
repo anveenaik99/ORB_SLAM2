@@ -24,6 +24,12 @@ void feedbackfn(const nav_msgs::Odometry::ConstPtr& odom_data)
     pose.pose.position.x = odom_data->pose.pose.position.x;
     pose.pose.position.y = odom_data->pose.pose.position.y;
     pose.pose.position.z = odom_data->pose.pose.position.z;
+    pose.pose.orientation.x = 0;
+    pose.pose.orientation.y = 0;
+    pose.pose.orientation.z = 0;
+    pose.pose.orientation.w = 1;
+    pose.header.stamp = ros::Time::now();
+    pose.header.frame_id = "map";
 }
 
 void lost_track(const std_msgs::Empty::ConstPtr& lTrack){
@@ -97,7 +103,7 @@ int main(int argc, char **argv)
                 last_request = ros::Time::now();
             }
         }*/
-
+	
         local_pos_pub.publish(pose);
 	++i;
 	if(i<=200)

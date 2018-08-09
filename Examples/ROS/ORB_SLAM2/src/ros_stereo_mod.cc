@@ -222,13 +222,13 @@ tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3),world_lh.at<float>(0,
  	tf::Matrix3x3 globalRotation_rh = cameraRotation_rh*rotation90degX;
         tf::Vector3 globalTranslation_rh = cameraTranslation_rh;// * rotation270degXZ;
     tf::Transform transform = tf::Transform(globalRotation_rh, globalTranslation_rh);
-    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_link", "camera_pose"));
+    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "camera_pose"));
 
     //publish odometry
     //nav_msgs::Odometry odom;
     geometry_msgs::PoseStamped odom;
     odom.header.stamp = current_time;
-    odom.header.frame_id = "camera_link";
+    odom.header.frame_id = "map";
 
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0);
 
