@@ -38,7 +38,7 @@
 #include"../../../include/System.h"
 
 using namespace std;
-
+static cv::Mat offset = cv::Mat::zeros(4,4,CV_8UC1);
 class ImageGrabber
 {
 public:
@@ -155,29 +155,57 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     cv_bridge::CvImageConstPtr cv_ptrRight;
     try
     {
-        cv_ptrRight = cv_bridge::toCvShare(msgRight);
+      cv_ptrRight = cv_bridge::toCvShare(msgRight);
     }
     catch (cv_bridge::Exception& e)
     {
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
     }
-    cv::Mat pos;
+    cv::Mat pos,dst;
+
+    static cv::Mat prev_pose;
+    const cv::Mat check = cv::Mat::eye(4,4, CV_32F);
+    dst = cv::Mat::zeros(4,4, CV_32F);
     if(do_rectify)
     {
         cv::Mat imLeft, imRight;
         cv::remap(cv_ptrLeft->image,imLeft,M1l,M2l,cv::INTER_LINEAR);
         cv::remap(cv_ptrRight->image,imRight,M1r,M2r,cv::INTER_LINEAR);
         pos = mpSLAM->TrackStereo(imLeft,imRight,cv_ptrLeft->header.stamp.toSec());
+        if(!pos.empty())
+          cv::bitwise_xor(pos, check, dst);
+        if(!pos.empty()&&cv::countNonZero(dst) > 0){
+          prev_pose = pos.clone();
+          //cout<<endl<<"Previous"<<prev_pose<<endl;
+        }
     }
     else
     {
         pos = mpSLAM->TrackStereo(cv_ptrLeft->image,cv_ptrRight->image,cv_ptrLeft->header.stamp.toSec());
+        if(!pos.empty()){
+          prev_pose = pos.clone();
+          //cout<<endl<<"Previous"<<prev_pose<<endl;
+        }
     }
 
-	cout<<pos<<endl;
-    if (pos.empty())
+
+    if (pos.empty() ){
+      try{
+
+        offset = prev_pose.clone();
+          cout<<endl<<"offset"<<endl<<offset;
+        mpSLAM->Reset();
+      }
+      catch (cv_bridge::Exception& e)
+      {
+          ROS_ERROR("cv_bridge exception1: %s", e.what());
         return;
+      }
+      return;
+    }
+
+
 
     /* global left handed coordinate system */
     static cv::Mat pose_prev = cv::Mat::eye(4,4, CV_32F);
@@ -209,7 +237,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
                                     world_lh3[2][0], -world_lh3[2][1], - world_lh3[2][0]);
 
   //  tf::Vector3 cameraTranslation_rh( world_lh.at<float>(0,3),world_lh.at<float>(1,3), - orld_lh.at<float>(2,3) );
-tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3),world_lh.at<float>(0,3),world_lh.at<float>(1,3) );
+tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3)- offset.at<float>(2,3),world_lh.at<float>(0,3)+offset.at<float>(0,3),world_lh.at<float>(1,3) );
 
     //rotate 270deg about x and 270deg about z to get ENU: x forward, y left, z up
     const tf::Matrix3x3 rotation270degXZ(   0, 1, 0,
@@ -218,7 +246,7 @@ tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3),world_lh.at<float>(0,
  const tf::Matrix3x3 rotation90degX(   1, 0, 0,
                                           0, 0, 1,
                                            0, -1, 0);
- 	
+
  	tf::Matrix3x3 globalRotation_rh = cameraRotation_rh*rotation90degX;
         tf::Vector3 globalTranslation_rh = cameraTranslation_rh;// * rotation270degXZ;
     tf::Transform transform = tf::Transform(globalRotation_rh, globalTranslation_rh);
