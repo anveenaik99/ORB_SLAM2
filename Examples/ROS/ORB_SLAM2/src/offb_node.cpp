@@ -13,6 +13,8 @@
 #include "std_msgs/Empty.h"
 
 geometry_msgs::PoseStamped pose;
+geometry_msgs::PoseStamped pos;
+
 float inp_z = 2.0;
 // void state_cb(const mavros_msgs::State::ConstPtr& msg){
 //     current_state = *msg;
@@ -41,18 +43,20 @@ int main(int argc, char **argv)
 	if(argc >1)
 	{
     		inp_z = atof(argv[1]);
- 	}		
-	else 
+ 	}
+	else
 	{
 		inp_z = 0.0;
-	
-	}	
+
+	}
     ros::init(argc, argv, "offb_node");
     ros::NodeHandle nh;
-    ros::Subscriber imu_yaw = nh.subscribe("mavros/local_position/odom", 10, feedbackfn);	
+    ros::Subscriber imu_yaw = nh.subscribe("mavros/local_position/odom", 10, feedbackfn);
     // ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>
     //         ("mavros/state", 10, state_cb);
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
+    ros::Publisher local_pos = nh.advertise<geometry_msgs::PoseStamped>("mavros/vision_pose/pose", 10);
+
     // ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>
     //         ("mavros/cmd/arming");
     // ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
@@ -92,6 +96,7 @@ int main(int argc, char **argv)
                 offb_set_mode.response.success){
                 ROS_INFO("Offboard enabled");
             }
+
             last_request = ros::Time::now();
         } else {
             if( !current_state.armed &&
@@ -103,17 +108,26 @@ int main(int argc, char **argv)
                 last_request = ros::Time::now();
             }
         }*/
-	
+        pos.pose.position.x = 1;
+        pos.pose.position.y = 0;
+        pos.pose.position.z = 1;
+        pos.pose.orientation.x = 0;
+        pos.pose.orientation.y = 0;
+        pos.pose.orientation.z = 0;
+        pos.pose.orientation.w = 1;
+        pos.header.stamp = ros::Time::now();
+        pos.header.frame_id = "map";
         local_pos_pub.publish(pose);
+        local_pos.publish(pos);
 	++i;
-	if(i<=200)
-	{
-        ros::spinOnce();
-        
-	}
+	// if(i<=200)
+	// {
+  //       ros::spinOnce();
+  //
+	// }
+    ros::spinOnce();
     rate.sleep();
     }
 
     return 0;
 }
-

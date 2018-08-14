@@ -21,6 +21,7 @@
 
 #include<iostream>
 #include<algorithm>
+#include<thread>
 #include<fstream>
 #include<chrono>
 #include<geometry_msgs/PoseStamped.h>
@@ -38,11 +39,19 @@
 #include"../../../include/System.h"
 
 using namespace std;
-static cv::Mat offset = cv::Mat::zeros(4,4,CV_8UC1);
+static cv::Mat offset = cv::Mat::zeros(4,4,CV_32F);
+geometry_msgs::PoseStamped odom;
+
+bool first = false;
+
 class ImageGrabber
 {
 public:
-    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){}
+    ImageGrabber(ORB_SLAM2::System* pSLAM, ros::NodeHandle *nh):mpSLAM(pSLAM){
+      odom_p = nh->advertise<geometry_msgs::PoseStamped>("mavros/vision_pose/pose", 50,this);
+      std::thread Thread(&ImageGrabber::vision_thread,this);
+      Thread.detach();
+    }
 
     void GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
 
@@ -52,13 +61,28 @@ public:
 
     bool do_rectify;
     cv::Mat M1l,M2l,M1r,M2r;
+    void vision_thread();
+    bool flag;
 };
+
+void ImageGrabber::vision_thread()
+{
+  ros::Rate r(50);
+  while(ros::ok())
+  {
+      if(!first)
+        continue;
+      odom.header.stamp = ros::Time::now();
+      odom_p.publish(odom);
+      r.sleep();
+  }
+}
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "RGBD");
     ros::start();
-
+    ros::NodeHandle nh;
     if(argc != 4)
     {
         cerr << endl << "Usage: rosrun ORB_SLAM2 Stereo path_to_vocabulary path_to_settings do_rectify" << endl;
@@ -69,7 +93,7 @@ int main(int argc, char **argv)
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
 
-    ImageGrabber igb(&SLAM);
+    ImageGrabber igb(&SLAM,&nh);
 
     stringstream ss(argv[3]);
 	ss >> boolalpha >> igb.do_rectify;
@@ -113,14 +137,13 @@ int main(int argc, char **argv)
         cv::initUndistortRectifyMap(K_r,D_r,R_r,P_r.rowRange(0,3).colRange(0,3),cv::Size(cols_r,rows_r),CV_32F,igb.M1r,igb.M2r);
     }
 
-    ros::NodeHandle nh;
+
 
     message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "camera/left/image_raw", 1);
     message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "camera/right/image_raw", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&igb,_1,_2));
-    igb.odom_p = nh.advertise<geometry_msgs::PoseStamped>("mavros/vision_pose/pose", 50);
 
     ros::spin();
 
@@ -175,9 +198,9 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         pos = mpSLAM->TrackStereo(imLeft,imRight,cv_ptrLeft->header.stamp.toSec());
         if(!pos.empty())
           cv::bitwise_xor(pos, check, dst);
-        if(!pos.empty()&&cv::countNonZero(dst) > 0){
+        if(!pos.empty()){//&&cv::countNonZero(dst) > 0){
           prev_pose = pos.clone();
-          //cout<<endl<<"Previous"<<prev_pose<<endl;
+          cout<<endl<<"Previous"<<prev_pose<<endl;
         }
     }
     else
@@ -185,15 +208,19 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         pos = mpSLAM->TrackStereo(cv_ptrLeft->image,cv_ptrRight->image,cv_ptrLeft->header.stamp.toSec());
         if(!pos.empty()){
           prev_pose = pos.clone();
-          //cout<<endl<<"Previous"<<prev_pose<<endl;
+          cout<<endl<<"Previous"<<prev_pose<<endl;
         }
     }
 
 
     if (pos.empty() ){
+
       try{
 
-        offset = prev_pose.clone();
+        if(!flag){
+          cv::add(offset,prev_pose.clone(),offset);
+          flag = true;
+        }
           cout<<endl<<"offset"<<endl<<offset;
         mpSLAM->Reset();
       }
@@ -203,6 +230,9 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         return;
       }
       return;
+    }
+    else{
+      flag = false;
     }
 
 
@@ -254,7 +284,7 @@ tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3)- offset.at<float>(2,3
 
     //publish odometry
     //nav_msgs::Odometry odom;
-    geometry_msgs::PoseStamped odom;
+
     odom.header.stamp = current_time;
     odom.header.frame_id = "map";
 
@@ -264,6 +294,7 @@ tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3)- offset.at<float>(2,3
     odom.pose.position.x = globalTranslation_rh[0] ;
     odom.pose.position.y = globalTranslation_rh[1] ;
     odom.pose.position.z = globalTranslation_rh[2];
+
     odom.pose.orientation = odom_quat;
 
     //set the velocity
@@ -273,5 +304,6 @@ tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3)- offset.at<float>(2,3
     // odom.twist.twist.angular.z = 0;
 
     //publish the message
-    odom_p.publish(odom);
+    first =  true;
+
 }
