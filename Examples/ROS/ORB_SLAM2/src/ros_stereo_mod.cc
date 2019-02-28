@@ -48,7 +48,7 @@ class ImageGrabber
 {
 public:
     ImageGrabber(ORB_SLAM2::System* pSLAM, ros::NodeHandle *nh):mpSLAM(pSLAM){
-      odom_p = nh->advertise<geometry_msgs::PoseStamped>("mavros/vision_pose/pose", 50,this);
+      odom_p = nh->advertise<geometry_msgs::PoseStamped>("mavros/fake_gps/mocap/pose", 50,this);
       std::thread Thread(&ImageGrabber::vision_thread,this);
       Thread.detach();
     }
@@ -139,8 +139,8 @@ int main(int argc, char **argv)
 
 
 
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "camera/left/image_raw", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "camera/right/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "stereo/left/image", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "stereo/right/image", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&igb,_1,_2));
@@ -252,33 +252,40 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     // world_lh = world_lh * translation;
     world_lh = pos;
     // pose_prev = pos.clone();
-  const tf::Matrix3x3 rotation45degX(	    1, 0, 0,
-                                            0, 0.707, 0.707,
-                                            0, -0.707, 0.707
-					    	);
+  // const tf::Matrix3x3 rotation45degX(	    1, 0, 0,
+  //                                           0, 0.707, 0.707,
+  //                                           0, -0.707, 0.707
+		// 			    	);
 	tf::Matrix3x3 world_lh3(   world_lh.at<float>(0,0),   world_lh.at<float>(0,1),   world_lh.at<float>(0,2),
                                    world_lh.at<float>(1,0),   world_lh.at<float>(1,1),   world_lh.at<float>(1,2),
                                     world_lh.at<float>(2,0),  world_lh.at<float>(2,1), world_lh.at<float>(2,2));
-	world_lh3 = world_lh3*rotation45degX;
+	// world_lh3 = world_lh3*rotation45degX;
 
     /* transform into global right handed coordinate system, publish in ROS*/
-    tf::Matrix3x3 cameraRotation_rh(  - world_lh3[0][0],   world_lh3[0][1],   world_lh3[0][2],
-                                  - world_lh3[1][0],   world_lh3[1][1],   world_lh3[1][2],
-                                    world_lh3[2][0], -world_lh3[2][1], - world_lh3[2][0]);
+    // tf::Matrix3x3 cameraRotation_rh(  - world_lh3[0][0],   world_lh3[0][1],   world_lh3[0][2],
+    //                               - world_lh3[1][0],   world_lh3[1][1],   world_lh3[1][2],
+    //                                 world_lh3[2][0], -world_lh3[2][1], - world_lh3[2][0]);
 
   //  tf::Vector3 cameraTranslation_rh( world_lh.at<float>(0,3),world_lh.at<float>(1,3), - orld_lh.at<float>(2,3) );
 tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3)- offset.at<float>(2,3),world_lh.at<float>(0,3)+offset.at<float>(0,3),world_lh.at<float>(1,3) );
 
     //rotate 270deg about x and 270deg about z to get ENU: x forward, y left, z up
-    const tf::Matrix3x3 rotation270degXZ(   0, 1, 0,
-                                            0, 0, 1,
-                                            1, 0, 0);
- const tf::Matrix3x3 rotation90degX(   1, 0, 0,
-                                          0, 0, 1,
-                                           0, -1, 0);
+ //    const tf::Matrix3x3 rotation270degXZ(   0, 1, 0,
+ //                                            0, 0, 1,
+ //                                            1, 0, 0);
+ // const tf::Matrix3x3 rotation90degX(   1, 0, 0,
+ //                                          0, 0, 1,
+ //                                           0, -1, 0);
+    const tf::Matrix3x3 rotation270degY(-0.0000000,  0.0000000, -1.0000000,
+   0.0000000,  1.0000000,  0.0000000,
+   1.0000000,  0.0000000, -0.0000000 );
+    const tf::Matrix3x3 rotation270degZ(-0.0000000,  1.0000000,  0.0000000
+  -1.0000000, -0.0000000,  0.0000000
+   0.0000000,  0.0000000,  1.0000000);
+    tf::Matrix3x3 rotation270degYZ = rotation270degY * rotation270degZ; 
 
- 	tf::Matrix3x3 globalRotation_rh = cameraRotation_rh*rotation90degX;
-        tf::Vector3 globalTranslation_rh = cameraTranslation_rh;// * rotation270degXZ;
+ 	tf::Matrix3x3 globalRotation_rh = cameraRotation_rh*rotation270degYZ;
+        tf::Vector3 globalTranslation_rh = cameraTranslation_rh;// change translation matrix
     tf::Transform transform = tf::Transform(globalRotation_rh, globalTranslation_rh);
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "camera_pose"));
 
