@@ -17,7 +17,11 @@
 * You should have received a copy of the GNU General Public License
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
-
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <Eigen/Eigen>
+#include <Eigen/Geometry>
+#include <eigen_conversions/eigen_msg.h>
 
 #include<iostream>
 #include<algorithm>
@@ -32,9 +36,11 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include "geometry_msgs/TransformStamped.h"
 #include "tf/transform_datatypes.h"
+#include "tf_conversions/tf_eigen.h"
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
 #include<opencv2/core/core.hpp>
+#include <opencv2/core/eigen.hpp>
 
 #include"../../../include/System.h"
 
@@ -48,7 +54,7 @@ class ImageGrabber
 {
 public:
     ImageGrabber(ORB_SLAM2::System* pSLAM, ros::NodeHandle *nh):mpSLAM(pSLAM){
-      odom_p = nh->advertise<geometry_msgs::PoseStamped>("mavros/fake_gps/mocap/pose", 50,this);
+      odom_p = nh->advertise<geometry_msgs::PoseStamped>("mavros/fake_gps/mocap/pose", 1000,this);
       std::thread Thread(&ImageGrabber::vision_thread,this);
       Thread.detach();
     }
@@ -67,7 +73,7 @@ public:
 
 void ImageGrabber::vision_thread()
 {
-  ros::Rate r(50);
+  ros::Rate r(1000);
   while(ros::ok())
   {
       if(!first)
@@ -96,7 +102,7 @@ int main(int argc, char **argv)
     ImageGrabber igb(&SLAM,&nh);
 
     stringstream ss(argv[3]);
-	ss >> boolalpha >> igb.do_rectify;
+    ss >> boolalpha >> igb.do_rectify;
 
     if(igb.do_rectify)
     {
@@ -200,7 +206,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
           cv::bitwise_xor(pos, check, dst);
         if(!pos.empty()){//&&cv::countNonZero(dst) > 0){
           prev_pose = pos.clone();
-          cout<<endl<<"Previous"<<prev_pose<<endl;
+          // cout<<endl<<"Previous"<<prev_pose<<endl;
         }
     }
     else
@@ -208,7 +214,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         pos = mpSLAM->TrackStereo(cv_ptrLeft->image,cv_ptrRight->image,cv_ptrLeft->header.stamp.toSec());
         if(!pos.empty()){
           prev_pose = pos.clone();
-          cout<<endl<<"Previous"<<prev_pose<<endl;
+          // cout<<endl<<"Previous"<<prev_pose<<endl;
         }
     }
 
@@ -221,7 +227,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
           cv::add(offset,prev_pose.clone(),offset);
           flag = true;
         }
-          cout<<endl<<"offset"<<endl<<offset;
+          // cout<<endl<<"offset"<<endl<<offset;
         mpSLAM->Reset();
       }
       catch (cv_bridge::Exception& e)
@@ -248,26 +254,27 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
 
     //prev_pose * T = pose
     // cv::Mat translation =  (pos * pose_prev.inv()).mul(flipSign);
-	//cv::Mat translation =  (pos).mul(flipSign);
+    //cv::Mat translation =  (pos).mul(flipSign);
     // world_lh = world_lh * translation;
     world_lh = pos;
     // pose_prev = pos.clone();
-  // const tf::Matrix3x3 rotation45degX(	    1, 0, 0,
+  // const tf::Matrix3x3 rotation45degX(        1, 0, 0,
   //                                           0, 0.707, 0.707,
   //                                           0, -0.707, 0.707
-		// 			    	);
-	tf::Matrix3x3 world_lh3(   world_lh.at<float>(0,0),   world_lh.at<float>(0,1),   world_lh.at<float>(0,2),
+        //                  );
+    tf::Matrix3x3 world_lh3(   world_lh.at<float>(0,0),   world_lh.at<float>(0,1),   world_lh.at<float>(0,2),
                                    world_lh.at<float>(1,0),   world_lh.at<float>(1,1),   world_lh.at<float>(1,2),
                                     world_lh.at<float>(2,0),  world_lh.at<float>(2,1), world_lh.at<float>(2,2));
-	// world_lh3 = world_lh3*rotation45degX;
+    // world_lh3 = world_lh3*rotation45degX;
 
     /* transform into global right handed coordinate system, publish in ROS*/
-    // tf::Matrix3x3 cameraRotation_rh(  - world_lh3[0][0],   world_lh3[0][1],   world_lh3[0][2],
-    //                               - world_lh3[1][0],   world_lh3[1][1],   world_lh3[1][2],
-    //                                 world_lh3[2][0], -world_lh3[2][1], - world_lh3[2][0]);
+    tf::Matrix3x3 cameraRotation_rh(   world_lh3[0][0],   world_lh3[0][1],   world_lh3[0][2],
+                                  world_lh3[1][0],   world_lh3[1][1],   world_lh3[1][2],
+                                    world_lh3[2][0],world_lh3[2][1], world_lh3[2][2]);
 
   //  tf::Vector3 cameraTranslation_rh( world_lh.at<float>(0,3),world_lh.at<float>(1,3), - orld_lh.at<float>(2,3) );
-tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3)- offset.at<float>(2,3),world_lh.at<float>(0,3)+offset.at<float>(0,3),world_lh.at<float>(1,3) );
+// tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3)- offset.at<float>(2,3),world_lh.at<float>(0,3)+offset.at<float>(0,3),world_lh.at<float>(1,3) );
+    tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(0,3)- offset.at<float>(0,3),-world_lh.at<float>(1,3)+offset.at<float>(1,3),-world_lh.at<float>(2,3) );
 
     //rotate 270deg about x and 270deg about z to get ENU: x forward, y left, z up
  //    const tf::Matrix3x3 rotation270degXZ(   0, 1, 0,
@@ -276,31 +283,52 @@ tf::Vector3 cameraTranslation_rh( -world_lh.at<float>(2,3)- offset.at<float>(2,3
  // const tf::Matrix3x3 rotation90degX(   1, 0, 0,
  //                                          0, 0, 1,
  //                                           0, -1, 0);
-    const tf::Matrix3x3 rotation270degY(-0.0000000,  0.0000000, -1.0000000,
-   0.0000000,  1.0000000,  0.0000000,
-   1.0000000,  0.0000000, -0.0000000 );
-    const tf::Matrix3x3 rotation270degZ(-0.0000000,  1.0000000,  0.0000000
-  -1.0000000, -0.0000000,  0.0000000
-   0.0000000,  0.0000000,  1.0000000);
-    tf::Matrix3x3 rotation270degYZ = rotation270degY * rotation270degZ; 
+     tf::Matrix3x3 rotation90degY(0,  0, -1,
+   0,  1,  0,
+   1,  0, 0 );
+    tf::Matrix3x3 rotation90degZ(0,  1,  0,
+  -1, 0,  0,
+   0,  0,  1);
+    tf::Matrix3x3 rotation90degYZ = rotation90degY * rotation90degZ; 
 
- 	tf::Matrix3x3 globalRotation_rh = cameraRotation_rh*rotation270degYZ;
+    tf::Matrix3x3 globalRotation_rh = rotation90degYZ*cameraRotation_rh;
         tf::Vector3 globalTranslation_rh = cameraTranslation_rh;// change translation matrix
-    tf::Transform transform = tf::Transform(globalRotation_rh, globalTranslation_rh);
+    tf::Transform transform = tf::Transform(globalRotation_rh, cameraTranslation_rh);
+    Eigen::Matrix3d temp;
+    tf::matrixTFToEigen(globalRotation_rh,temp);
+    Eigen::Quaterniond q(temp);
+  
+   //  tf::Vector3 quat = transform.getOrigin();
+    
+   //  cout << "PRINT" << endl;
+   //  for (int i = 0; i < 4; ++i)
+   //  {
+   //      cout << quat[i];
+   //  }
+   //  cout << endl;
+   // for (int i = 0; i < 4; ++i)
+   //  {
+   //      cout << cameraTranslation_rh[i];
+   //  }
+   //  cout << endl;
+
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "camera_pose"));
 
     //publish odometry
     //nav_msgs::Odometry odom;
 
-    odom.header.stamp = current_time;
-    odom.header.frame_id = "map";
-
-    geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0);
+    odom.header.stamp = ros::Time::now();
+    odom.header.frame_id = "camera_pose";
+    //double yaw = atan2(globalRotation_rh[2][1], globalRotation_rh[1][1]);
+    geometry_msgs::Quaternion odom_quat;
+    tf::quaternionEigenToMsg(q,odom_quat);
 
     //set the position
-    odom.pose.position.x = globalTranslation_rh[0] ;
-    odom.pose.position.y = globalTranslation_rh[1] ;
-    odom.pose.position.z = globalTranslation_rh[2];
+    tf::Vector3 bodyframe_rh = globalRotation_rh * cameraTranslation_rh;
+
+    odom.pose.position.x = bodyframe_rh[0] ;
+    odom.pose.position.y = bodyframe_rh[1] ;
+    odom.pose.position.z = bodyframe_rh[2];
 
     odom.pose.orientation = odom_quat;
 

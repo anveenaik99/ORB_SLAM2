@@ -1,0 +1,14 @@
+digraph G {
+"local_origin" -> "local_origin_ned"[label="Broadcaster: /mavros\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1551618330.590 sec old)\nBuffer length: 0.000 sec\n"];
+"fcu" -> "fcu_frd"[label="Broadcaster: /mavros\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1551618330.590 sec old)\nBuffer length: 0.000 sec\n"];
+"fcu_frd" -> "fcu"[label="Broadcaster: /mavros\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1551618330.590 sec old)\nBuffer length: 0.000 sec\n"];
+"camera_pose" -> "map"[label="Broadcaster: /RGBD\nAverage rate: 6.976 Hz\nMost recent transform: 1551618330.469 ( 0.121 sec old)\nBuffer length: 4.731 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1551618330.590"[ shape=plaintext ] ;
+ }->"local_origin";
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1551618330.590"[ shape=plaintext ] ;
+ }->"camera_pose";
+}
