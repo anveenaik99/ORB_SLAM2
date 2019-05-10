@@ -276,6 +276,8 @@ void System::ActivateLocalizationMode()
 void System::DeactivateLocalizationMode()
 {
     unique_lock<mutex> lock(mMutexMode);
+     //   mbActivateLocalizationMode = true;
+      //  cout << "reached here" << endl;
     mbDeactivateLocalizationMode = true;
 }
 

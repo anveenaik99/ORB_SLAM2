@@ -113,7 +113,7 @@ void Viewer::Run()
             bFollow = false;
         }
 
-        if(menuLocalizationMode && !bLocalizationMode)
+        if(menuLocalizationMode && !bLocalizationMode/*true*/)
         {
             mpSystem->ActivateLocalizationMode();
             bLocalizationMode = true;
