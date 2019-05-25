@@ -327,6 +327,12 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     tf::Matrix3x3 globalRotation_rh = rotation90degYZ*cameraRotation_rh;
         tf::Vector3 globalTranslation_rh = cameraTranslation_rh;// change translation matrix
     tf::Transform transform = tf::Transform(globalRotation_rh, cameraTranslation_rh);
+
+    // cout<< globalRotation_rh<< endl;
+    // cout << cameraTranslation_rh <<endl;
+    // cout << cameraRotation_rh <<endl;
+
+    // cout << transform [0][0]<<endl;
     // cameraTranslation_rh[0] = cameraTranslation_rh[0] - offset.at<float>(2,3);
     // cameraTranslation_rh[1] = cameraTranslation_rh[1] - offset.at<float>(1,3);
     Eigen::Matrix3d temp;
@@ -347,7 +353,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
    //  }
    //  cout << endl;
 
-    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "camera_pose"));
+    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "camera_pose")); 
 
     //publish odometry
     //nav_msgs::Odometry odom;
