@@ -23,6 +23,7 @@
 #include <Eigen/Geometry>
 #include <eigen_conversions/eigen_msg.h>
 
+
 #include<iostream>
 #include<algorithm>
 #include<thread>
@@ -45,7 +46,7 @@
 #include"../../../include/System.h"
 
 using namespace std;
-static cv::Mat offset = cv::Mat::zeros(4,4,CV_32F);
+// static cv::Mat offset = cv::Mat::zeros(4,4,CV_32F);
 geometry_msgs::PoseStamped odom;
 
 bool first = false;
@@ -89,7 +90,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "RGBD");
     ros::start();
     ros::NodeHandle nh;
-    if(argc != 4)
+    if(argc < 4)
     {
         cerr << endl << "Usage: rosrun ORB_SLAM2 Stereo path_to_vocabulary path_to_settings do_rectify" << endl;
         ros::shutdown();
@@ -97,8 +98,15 @@ int main(int argc, char **argv)
     }
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true); //turn it to false to turn off display
-
+    // ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true); //turn it to false to turn off display
+    
+	#ifdef FUNC_MAP_SAVE_LOAD
+	ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true,true);
+	#else
+	ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
+	#endif
+// cout << argv[2] <<endl;
+// cout << "reached 1 " <<endl;
     ImageGrabber igb(&SLAM,&nh);
 
     stringstream ss(argv[3]);
@@ -143,16 +151,16 @@ int main(int argc, char **argv)
         cv::initUndistortRectifyMap(K_r,D_r,R_r,P_r.rowRange(0,3).colRange(0,3),cv::Size(cols_r,rows_r),CV_32F,igb.M1r,igb.M2r);
     }
 
-
+// cout << "rectified done " <<endl;
 
     message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "stereo/left/image", 1);
     message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "stereo/right/image", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&igb,_1,_2));
-
+// cout << "just before ros spin" <<endl;
     ros::spin();
-
+// cout << "after rosspin" <<endl;
     // Stop all threads
     SLAM.Shutdown();
 
@@ -168,6 +176,7 @@ int main(int argc, char **argv)
 
 void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight)
 {
+  cv::Mat offset = cv::Mat::zeros(4,4,CV_32F);
     ros::Time current_time = ros::Time::now();
     // Copy the ros image message to cv::Mat.
     cv_bridge::CvImageConstPtr cv_ptrLeft;
@@ -196,6 +205,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     static cv::Mat prev_pose;
     const cv::Mat check = cv::Mat::eye(4,4, CV_32F);
     dst = cv::Mat::zeros(4,4, CV_32F);
+    // cout << 1 << endl;
     if(do_rectify)
     {
         cv::Mat imLeft, imRight;
@@ -209,6 +219,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
           // cout<<endl<<"Previous"<<prev_pose<<endl;
         }
     }
+    // cout << 2 <<endl;
     else
     {
         pos = mpSLAM->TrackStereo(cv_ptrLeft->image,cv_ptrRight->image,cv_ptrLeft->header.stamp.toSec());
@@ -218,19 +229,19 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         }
     }
     // Eigen::Matrix4f M;
-
+    // cout << 3<< endl;
     if (pos.empty() ){
 
       try{
 
         if(!flag){
-
-          // cout<<endl<<"offset in flag "<<endl<<offset<<endl;
-          // cout << "Previous pose in flag "<<endl << prev_pose <<endl;
-          // offset = prev_pose.clone();
-          cv::add(offset,prev_pose.clone(),offset);
-          flag = true;
+          if(first)
+          {
+            cv::add(offset,prev_pose.clone(),offset);
+          }
         }
+        flag = true;
+        // cout << "random " <<endl;
         // cout<<"Previous pose outside flag "<<endl<<prev_pose<<endl;
         // cout<<"offset before reset "<<endl<<offset<<endl;
         mpSLAM->Reset();
@@ -254,8 +265,6 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
     else{
       flag = false;
     }
-
-
 
     /* global left handed coordinate system */
     static cv::Mat pose_prev = cv::Mat::eye(4,4, CV_32F);

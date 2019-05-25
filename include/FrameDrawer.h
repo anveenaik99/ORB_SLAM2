@@ -24,12 +24,12 @@
 #include "Tracking.h"
 #include "MapPoint.h"
 #include "Map.h"
-#include <unistd.h>
 
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
 #include<mutex>
+#include <unistd.h>
 
 
 namespace ORB_SLAM2
@@ -41,7 +41,7 @@ class Viewer;
 class FrameDrawer
 {
 public:
-    FrameDrawer(Map* pMap);
+    FrameDrawer(Map* pMap, bool bReuseMap=false);
 
     // Update info from the last processed frame.
     void Update(Tracking *pTracker);

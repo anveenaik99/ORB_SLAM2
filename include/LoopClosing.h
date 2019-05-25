@@ -23,7 +23,6 @@
 
 #include "KeyFrame.h"
 #include "LocalMapping.h"
-#include <unistd.h>
 #include "Map.h"
 #include "ORBVocabulary.h"
 #include "Tracking.h"
@@ -33,6 +32,8 @@
 #include <thread>
 #include <mutex>
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
+
+#include <unistd.h>
 
 namespace ORB_SLAM2
 {
@@ -144,7 +145,7 @@ protected:
     bool mbFixScale;
 
 
-    bool mnFullBAIdx;
+    int mnFullBAIdx;
 };
 
 } //namespace ORB_SLAM

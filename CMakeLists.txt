@@ -7,11 +7,8 @@ ENDIF()
 
 MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall -msse3 -O3 -march=native ")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -msse3 -O3 -march=native")
-
-#-Wall is used to show all compiler warnings.
-#-msse3 to enable SIMD instruction set
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3 -march=native ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3 -march=native")
 
 # Check C++11 or C++0x support
 include(CheckCXXCompilerFlag)
@@ -80,6 +77,18 @@ ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 )
+if (NOT DEFINED USE_MAP_SAVE_LOAD)
+    set(USE_MAP_SAVE_LOAD OFF)
+endif()
+if(USE_MAP_SAVE_LOAD)
+    message(STATUS "Compile With map save/load function")
+    find_library(BOOST_SERIALIZATION boost_serialization)
+    if (NOT BOOST_SERIALIZATION)
+	message(FATAL_ERROR "Can't find libboost_serialization")
+    endif()
+    target_link_libraries(${PROJECT_NAME} ${BOOST_SERIALIZATION})
+    target_compile_definitions(${PROJECT_NAME} PUBLIC FUNC_MAP_SAVE_LOAD=1)
+endif()
 
 # Build examples
 
@@ -114,3 +123,19 @@ add_executable(mono_euroc
 Examples/Monocular/mono_euroc.cc)
 target_link_libraries(mono_euroc ${PROJECT_NAME})
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Vocabulary)
+add_executable(bin_vocabulary Vocabulary/bin_vocabulary.cpp)
+target_link_libraries(bin_vocabulary ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so ${OpenCV_LIBS})
+
+if(USE_EXAMPLE_WEBCAM)
+    find_package(PkgConfig REQUIRED)
+    pkg_search_module(CURL REQUIRED libcurl)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    add_executable(mono_uvc Examples/mono_uvc.cpp)
+    target_link_libraries(mono_uvc ${PROJECT_NAME})
+    add_executable(mono_android_ipcam Examples/mono_android_ipcam.cpp)
+    target_link_libraries(mono_android_ipcam ${PROJECT_NAME} ${CURL_LIBRARIES})
+    add_executable(mono_android_ipcam_ar Examples/mono_android_ipcam_ar.cpp Examples/AR/ViewerAR.cc)
+    target_include_directories(mono_android_ipcam_ar PUBLIC Examples/AR/)
+    target_link_libraries(mono_android_ipcam_ar ${PROJECT_NAME} ${CURL_LIBRARIES})
+endif()

@@ -22,7 +22,6 @@
 #define KEYFRAME_H
 
 #include "MapPoint.h"
-#include <unistd.h>
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 #include "ORBVocabulary.h"
@@ -30,9 +29,12 @@
 #include "Frame.h"
 #include "KeyFrameDatabase.h"
 
+#include <unistd.h>
+
 #include <mutex>
-
-
+#ifdef FUNC_MAP_SAVE_LOAD
+#include "BoostArchiver.h"
+#endif
 namespace ORB_SLAM2
 {
 
@@ -44,6 +46,7 @@ class KeyFrameDatabase;
 class KeyFrame
 {
 public:
+
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
     // Pose functions
@@ -116,7 +119,17 @@ public:
     static bool lId(KeyFrame* pKF1, KeyFrame* pKF2){
         return pKF1->mnId<pKF2->mnId;
     }
-
+#ifdef FUNC_MAP_SAVE_LOAD
+public:
+    // for serialization
+    KeyFrame(); // Default constructor for serialization, need to deal with const member
+    void SetORBvocabulary(ORBVocabulary *porbv) {mpORBvocabulary=porbv;}
+private:
+    // serialize is recommended to be private
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version);
+#endif
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:

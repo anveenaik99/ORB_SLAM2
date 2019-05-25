@@ -1,6 +1,0 @@
-<launch>
-	<node name="republish_left" type="republish" pkg="image_transport" output="screen" args="compressed in:=camera/left out:=stereo/left" />
-	<node name="republish_right" type="republish" pkg="image_transport" output="screen" args="compressed in:=camera/right out:=stereo/right" />
-</launch>
-
-

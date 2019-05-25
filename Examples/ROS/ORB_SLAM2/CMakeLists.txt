@@ -9,8 +9,8 @@ ENDIF()
 
 MESSAGE("Build type: " ${ROS_BUILD_TYPE})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall -msse3 -O3 -march=native ")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -msse3 -O3 -march=native")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3 -march=native ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall  -O3 -march=native")
 
 # Check C++11 or C++0x support
 include(CheckCXXCompilerFlag)
@@ -31,7 +31,6 @@ endif()
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../../cmake_modules)
 
 find_package(OpenCV 3.0 QUIET)
-
 if(NOT OpenCV_FOUND)
    find_package(OpenCV 2.4.3 QUIET)
    if(NOT OpenCV_FOUND)
@@ -39,7 +38,7 @@ if(NOT OpenCV_FOUND)
    endif()
 endif()
 
-find_package(Eigen3 REQUIRED)
+find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 
 include_directories(
@@ -57,11 +56,15 @@ ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/g2o/lib/libg2o.so
 ${PROJECT_SOURCE_DIR}/../../../lib/libORB_SLAM2.so
-${PROJECT_SOURCE_DIR}/../../../lib/libORB_SLAM2.so
 -lboost_system
 )
 
 # Node for monocular camera
+
+if(USE_MAP_SAVE_LOAD)
+ADD_DEFINITIONS(-DFUNC_MAP_SAVE_LOAD)
+endif()
+
 rosbuild_add_executable(Mono
 src/ros_mono.cc
 )
@@ -69,15 +72,10 @@ src/ros_mono.cc
 target_link_libraries(Mono
 ${LIBS}
 )
+
 rosbuild_add_executable(offboard src/offb_node.cpp)
 target_link_libraries(offboard ${catkin_LIBRARIES})
-rosbuild_add_executable(Mono_mod
-src/ros_mono_mod.cc
-)
 
-target_link_libraries(Mono_mod
-${LIBS}
-)
 # Node for monocular camera (Augmented Reality Demo)
 rosbuild_add_executable(MonoAR
 src/AR/ros_mono_ar.cc
@@ -106,6 +104,7 @@ src/ros_stereo_mod.cc
 target_link_libraries(Stereo_mod
 ${LIBS}
 )
+
 # Node for RGB-D camera
 rosbuild_add_executable(RGBD
 src/ros_rgbd.cc
